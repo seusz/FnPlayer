@@ -1,0 +1,20 @@
+{
+  "_说明": "上游 npm 包未附带许可文本文件、但按其 package.json / npm registry 声明需要随副本附带许可声明时，在此补录并随发行包分发。键为 node_modules 中的包名，值为本目录下的许可文件。",
+  "_适用范围": "桌面便携版分发完整 node_modules，安卓版只分发静态扫描出的运行时依赖闭包（已裁掉 redis 家族与 pglite），两侧共用本清单。",
+  "packages": {
+    "@bufbuild/protobuf": "protobuf-Apache-2.0.txt",
+    "@nodable/entities": "entities-MIT.txt",
+    "brotli": "brotli-MIT.txt",
+    "data-uri-to-buffer": "data-uri-to-buffer-MIT.txt",
+
+    "@redis/bloom": "node-redis-MIT.txt",
+    "@redis/client": "node-redis-MIT.txt",
+    "@redis/json": "node-redis-MIT.txt",
+    "@redis/search": "node-redis-MIT.txt",
+    "@redis/time-series": "node-redis-MIT.txt",
+    "redis": "node-redis-MIT.txt",
+
+    "drizzle-orm": "drizzle-orm-Apache-2.0.txt",
+    "@esbuild/win32-x64": "esbuild-MIT.txt"
+  }
+}

@@ -60,9 +60,10 @@ FnPlayer/
 ├─ tools/
 │  ├─ prepare_portable.py    组装便携版（弹幕服务工作区 + 便携 Node）
 │  ├─ prepare_kernel.py      从 fnmedia-ext 提取内核模块
-│  └─ fetch_sources.py       获取体积大的外部资源（弹幕核心源码 / Node 运行时）
+│  └─ fetch_sources.py       获取体积大的外部资源（Node 运行时 / 最新版弹幕核心）
 ├─ tests/                   冒烟测试与界面预览脚本
 ├─ portable/                 便携版附加资源（配置模板；运行时由脚本组装）
+├─ third_party/danmu_api/    **弹幕核心完整源码**（AGPL-3.0，上游 commit 4c86579）
 ├─ NOTICE.md                **第三方组件、上游仓库地址与许可证**
 ├─ THIRD_PARTY_LICENSES/    各上游许可证原文副本
 └─ LICENSE                  AGPL-3.0
@@ -75,9 +76,8 @@ FnPlayer/
 ### 3.1 桌面版（Windows）
 
 ```bash
-# 1) 准备弹幕核心源码与便携 Node
-python tools/fetch_sources.py --danmu
-python tools/prepare_portable.py --src ../danmu_api_src
+# 1) 准备弹幕核心工作区（源码已随仓库入库，无需联网；会执行 npm install）
+python tools/prepare_portable.py
 
 # 2) 安装 Python 依赖
 pip install -r requirements.txt
@@ -90,6 +90,8 @@ python build/build.py
 > `build/build.py` 依赖 PyInstaller；首次运行会自动准备工具链（体积较大）。
 > 便携 Node 运行时若本机没有，会使用 `tools/prepare_portable.py` 找到的
 > `node.exe`，或从 Node.js 官方分发包获取。
+> 弹幕核心源码默认取仓库内的 `third_party/danmu_api/`；
+> 想改用本地克隆的上游目录可传 `--src <目录>`。
 
 ### 3.2 Android APK
 
@@ -97,17 +99,20 @@ python build/build.py
 # 1) 获取安卓端 Node 运行时（从上游 Release 提取 libnode.so 等，约 213 MB）
 python tools/fetch_sources.py --node-runtime
 
-# 2) 生成内置弹幕核心（裁剪依赖闭包，106 MB → 31 MB）
+# 2) 准备弹幕核心工作区（含 npm install，产出 node_modules）
+python tools/prepare_portable.py
+
+# 3) 生成内置弹幕核心（裁剪依赖闭包，106 MB → 31 MB）
 python android/build_danmu_core.py
 
-# 3) 打包（按架构分别产出）
+# 4) 打包（按架构分别产出）
 python android/build_apk.py --all-abis
 # 产物：android/dist/FnPlayer-1.2.0-android-{arm64-v8a,armeabi-v7a,x86_64}.apk
 
-# 4) 验收（含解包出内置核心并真实启动、实调搜索接口）
+# 5) 验收（含解包出内置核心并真实启动、实调搜索接口）
 python android/verify_apk.py
 
-# 5) 界面预览
+# 6) 界面预览
 python android/preview_ui.py
 ```
 
@@ -141,11 +146,15 @@ GH_TOKEN=<你的 access token> python android/publish_release.py --tag v1.2.0
 | 内容 | 体积 | 获取方式 |
 | --- | --- | --- |
 | 安卓端 Node 运行时（`android/lib/`） | ~213 MB | `python tools/fetch_sources.py --node-runtime` |
-| 内置弹幕核心（`android/assets/danmu-core/`） | ~31 MB | `python android/build_danmu_core.py`（依赖上游源码） |
-| 弹幕核心源码（`../danmu_api_src`） | ~2.4 MB | `python tools/fetch_sources.py --danmu` |
+| 内置弹幕核心的依赖闭包（`android/assets/danmu-core/node_modules/`） | ~31 MB | `python tools/prepare_portable.py` + `python android/build_danmu_core.py` |
+| 弹幕核心的 node_modules（`portable/workspace/`） | ~106 MB | `python tools/prepare_portable.py`（执行 npm install） |
 | 便携 Node 运行时（`portable/runtime/`） | ~80 MB | `python tools/prepare_portable.py` |
 | 构建工具链（`build/_toolchain/`） | ~1.1 GB | `build/build.py` 自动准备 |
 | 构建产物（`dist/`、`android/dist/`） | — | 不入库，已发布为 GitHub Release 附件 |
+
+> **弹幕核心源码本身已入库**（`third_party/danmu_api/`，约 3.6 MB）——
+> 因为安卓端把 AGPL-3.0 的核心编入了 APK，公开分发必须同时提供完整对应源码。
+> `tools/fetch_sources.py --danmu` 仍可下载最新版上游用于更新。
 
 `tools/fetch_sources.py` 会校验提取出的原生库 SHA-256，指纹不符会明确报错。
 
@@ -177,6 +186,10 @@ FnPlayer 聚合了多个开源项目。**完整的上游仓库地址、许可证
 因为安卓端把 danmu_api（AGPL-3.0）的源码直接编入安装包并随应用分发，
 按 AGPL-3.0 的传染性要求，组合作品必须同样以 AGPL-3.0 提供完整对应源码 ——
 本仓库即该对应源码。
+
+**弹幕核心的完整源码就在本仓库内**：
+[`third_party/danmu_api/`](third_party/danmu_api/)（上游 commit `4c86579`）。
+APK 内也随包附带了核心的 AGPL-3.0 许可原文与各 npm 依赖的 LICENSE 文件。
 
 按 AGPL-3.0 第 13 条：**如果你修改了本项目并通过网络向他人提供服务，
 必须同时向这些用户提供你的修改版源码。**

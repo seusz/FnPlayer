@@ -25,6 +25,10 @@ runtime/node/node.exe，不需要用户安装 Node.js / npm。
   python tools/prepare_portable.py                  # 全量组装
   python tools/prepare_portable.py --skip-npm      # 跳过依赖安装
   python tools/prepare_portable.py --src <上游目录>
+
+默认从仓库内的 third_party/danmu_api/ 取源码（AGPL 第 13 条要求随分发提供
+完整对应源码，故上游核心源码已入库）。如需改用本地克隆的上游目录，
+用 --src 指定即可。
 """
 from __future__ import annotations
 
@@ -41,7 +45,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]                 # FnPlayer/
 SESSION = ROOT.parent
-DEFAULT_SRC = SESSION / "danmu_api_src"
+# 上游弹幕核心源码已随仓库入库（AGPL 第 13 条：随分发提供完整对应源码）。
+# 若要改用本地克隆的上游目录，用 --src 指定即可覆盖。
+DEFAULT_SRC = ROOT / "third_party" / "danmu_api"
 OUT = ROOT / "portable"
 
 NODE_CANDIDATES = [
@@ -414,6 +420,34 @@ def _patch_server_js(path: Path):
     log("已应用 patch: DANMU_API_PROXY_PORT")
 
 
+def _patch_missing_licenses(modules: Path):
+    """给上游漏发许可文件的 npm 包补上许可声明。
+
+    @bufbuild/protobuf、@nodable/entities、brotli、data-uri-to-buffer
+    这几个包的 npm 发行包里没有许可文本文件，但其 package.json 声明的
+    MIT / Apache-2.0 都要求「随副本附带许可声明」。补录文本放在
+    android/danmu-core-src/licenses/，映射见同目录 manifest.json。
+    """
+    lic_dir = ROOT / "android" / "danmu-core-src" / "licenses"
+    manifest = lic_dir / "manifest.json"
+    if not manifest.is_file():
+        return
+    try:
+        lic_map = json.loads(manifest.read_text(encoding="utf-8"))
+    except ValueError as e:
+        log("许可清单解析失败（不影响运行）: " + str(e))
+        return
+    for pkg, fname in sorted((lic_map.get("packages") or {}).items()):
+        pkg_dir = modules / pkg
+        src_lic = lic_dir / fname
+        if not pkg_dir.is_dir() or not src_lic.is_file():
+            continue
+        target = pkg_dir / "LICENSE.txt"
+        if not target.is_file():
+            shutil.copy2(src_lic, target)
+            log("已补录许可文件: %s" % pkg)
+
+
 def prepare_workspace(src: Path, skip_npm: bool):
     d = OUT / "workspace" / "danmu"
     d.mkdir(parents=True, exist_ok=True)
@@ -459,6 +493,7 @@ def prepare_workspace(src: Path, skip_npm: bool):
             raise SystemExit("npm install 失败，请检查网络后重试")
     if not (d / "node_modules").is_dir():
         raise SystemExit("缺少 node_modules，请用 --skip-npm 之外的模式重新运行")
+    _patch_missing_licenses(d / "node_modules")
     size = sum(p.stat().st_size for p in (d / "node_modules").rglob("*") if p.is_file())
     log(f"工作区就绪：node_modules {size / 1024 / 1024:.1f} MB")
     # 用便携 Node 做一次语法自检（不启动服务、不联网）
@@ -517,7 +552,9 @@ def main():
     src = Path(args.src)
     if not (src / "danmu_api" / "server.js").is_file():
         raise SystemExit(f"未找到上游源码：{src}\n"
-                         "请先 git clone https://github.com/huangxd-/danmu_api.git")
+                         "仓库内应有 third_party/danmu_api/；"
+                         "如需改用本地克隆，请用 --src 指定目录。\n"
+                         "也可执行 python tools/fetch_sources.py --danmu 下载最新版。")
     OUT.mkdir(parents=True, exist_ok=True)
     prepare_node(args.node_exe)
     prepare_workspace(src, args.skip_npm)

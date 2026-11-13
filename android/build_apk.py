@@ -373,11 +373,23 @@ APK 出厂不预置任何第三方资源站；如不希望使用内置弹幕核�
 「设置 → 弹幕」改为自建服务或关闭弹幕显示。
 请确保你访问的内容已获合法授权，仅供个人使用，请勿用于商业传播。
 
+【源码提供】
+因内置了 AGPL-3.0 的 danmu_api 核心，APK 随包附带了该核心的
+AGPL-3.0 许可原文（assets/danmu-core/LICENSE.danmu_api-AGPL-3.0.txt）
+与全部 npm 依赖的许可声明。
+本应用的完整对应源码（含弹幕核心源码）已在 GitHub 公开：
+  https://github.com/seusz/FnPlayer
+  弹幕核心源码位于 third_party/danmu_api/（上游 commit 4c86579）
+  第三方组件的上游仓库地址与许可证汇总见仓库中的 NOTICE.md
+若你修改了本应用并通过网络向他人提供服务，必须同时向这些用户提供
+你的修改版源码（AGPL-3.0 第 13 条）。
+
 【源码与构建】
 工程在 android/ 目录，纯 Android Framework API（WebView + HttpURLConnection +
 org.json），不依赖 AndroidX / Kotlin / Gradle；仅弹幕核心用到了随包分发的
 Node 运行时（通过 JNI 在进程内调用）。
 重新构建：
+  python tools/prepare_portable.py           # 准备弹幕核心工作区（含 npm install）
   python android/build_danmu_core.py      # 组装并裁剪内置弹幕核心
   python android/build_apk.py --all-abis  # 产出三个架构的安装包
 构建工具链位于 build/_toolchain/（Amazon Corretto JDK 17 + Android SDK

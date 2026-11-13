@@ -72,3 +72,11 @@ Hugging Face Spaces / Docker」章节都提供一键部署入口。国内手机�
 - 服务由你部署在自己的账号下，仅供个人使用，请勿公开传播或商用。
 - 弹幕内容来自第三方平台，能否访问、内容是否合适由使用者自行判断。
 - FnPlayer 不上传播放记录，不含统计、广告与第三方 SDK。
+
+【源码与许可】
+- FnPlayer 以 AGPL-3.0 发布，完整源码与第三方许可清单已公开：
+  https://github.com/seusz/FnPlayer （见仓库内的 NOTICE.md 与 LICENSE）
+- 安卓端内置的弹幕核心来自 danmu_api（AGPL-3.0），核心源码位于仓库的
+  third_party/danmu_api/；APK 内也随包附带了该核心的 AGPL 许可原文。
+- 若你修改了本应用并通过网络向他人提供服务，必须同时向这些用户提供你的
+  修改版源码（AGPL-3.0 第 13 条）。

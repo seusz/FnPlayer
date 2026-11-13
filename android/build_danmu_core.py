@@ -57,6 +57,43 @@ IMPORT_RE = re.compile(
     re.M,
 )
 
+# 许可文件名（大小写不敏感）。MIT / BSD / Apache 等许可都要求「随副本附带
+# 许可声明」，这些文件不能被裁剪规则删掉。
+LICENSE_NAMES = {
+    "license", "licence", "license.md", "licence.md", "license.txt",
+    "licence.txt", "license-mit", "licence-mit", "copying", "copying.txt",
+    "notice", "notice.txt", "unlicense", "licenses",
+}
+
+# 拷贝时要剔除的目录名
+PRUNE_DIRS = {
+    "test", "tests", "__tests__", "docs", "doc", "example", "examples",
+    ".github", ".idea", ".vscode", "benchmark", "benchmarks",
+}
+
+
+def _ignore_for_copy(directory: str, names: list) -> set:
+    """shutil.copytree 的 ignore 回调。
+
+    剔除文档与测试目录、README 等说明文件，但**保留所有许可文件**
+    （node-fetch 的 LICENSE.md、bignumber.js 的 LICENCE.md 都在此列）。
+    """
+    dropped = set()
+    for name in names:
+        full = Path(directory) / name
+        if full.is_dir():
+            if name in PRUNE_DIRS:
+                dropped.add(name)
+            continue
+        low = name.lower()
+        if low in LICENSE_NAMES:
+            continue
+        if low.startswith("license") or low.startswith("licence") or low.startswith("copying"):
+            continue
+        if low.startswith("readme") or low.endswith(".md") or low.endswith(".markdown"):
+            dropped.add(name)
+    return dropped
+
 
 def pkg_of(spec: str) -> str:
     """把 import 说明符解析成 node_modules 包名。"""
@@ -113,9 +150,7 @@ def copy_package(name: str, out_modules: Path, stats: dict) -> None:
         return
     dst = out_modules / name
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(src, dst, dirs_exist_ok=True,
-                    ignore=shutil.ignore_patterns("*.md", "test", "tests", "docs",
-                                                  "example", "examples", ".github"))
+    shutil.copytree(src, dst, dirs_exist_ok=True, ignore=_ignore_for_copy)
     stats["done"].add(name)
     pkg_json = src / "package.json"
     if not pkg_json.is_file():
@@ -163,6 +198,15 @@ def main() -> int:
         shutil.copy2(src, dst)
         copied += 1
 
+    # 1b) 随核心分发许可原文（AGPL 第 4 条要求「随副本附带许可声明」）
+    # danmu_api 的 LICENSE 在工作区根目录，不在 danmu_api/ 内，需单独取。
+    upstream_license = SRC_WORKSPACE / "LICENSE"
+    if upstream_license.is_file():
+        shutil.copy2(upstream_license, OUT / "LICENSE.danmu_api-AGPL-3.0.txt")
+        print("  + 许可原文: LICENSE.danmu_api-AGPL-3.0.txt")
+    else:
+        print("  ! 未找到上游 LICENSE，APK 将缺少 AGPL 许可原文")
+
     # 2) 依赖闭包
     stats = {"done": set(), "missing": [], "skipped": []}
     roots = scan_imports(OUT_CORE)
@@ -174,6 +218,36 @@ def main() -> int:
     launcher = AND / "danmu-core-src" / "server-entry.cjs"
     if launcher.is_file():
         shutil.copy2(launcher, OUT / "server-entry.cjs")
+
+    # 3b) 补齐上游遗漏的许可文件
+    #     brotli / data-uri-to-buffer / @bufbuild/protobuf / @nodable/entities
+    #     这几个 npm 包上游没带许可文本文件，但 MIT / Apache-2.0 都要求
+    #     「随副本附带许可声明」，因此用 android/danmu-core-src/licenses/ 里的
+    #     补录文本填进对应包目录。
+    #     包名可能带作用域（@bufbuild/protobuf），不能编码进文件名，
+    #     故用 licenses/manifest.json 显式映射「包名 -> 许可文件」。
+    patched_lic = 0
+    lic_dir = AND / "danmu-core-src" / "licenses"
+    lic_manifest = lic_dir / "manifest.json"
+    if lic_manifest.is_file():
+        try:
+            lic_map = json.loads(lic_manifest.read_text(encoding="utf-8"))
+        except ValueError as e:
+            print("  ! 许可清单解析失败: %s" % e)
+            lic_map = {}
+        for pkg, fname in sorted((lic_map.get("packages") or {}).items()):
+            src_lic = lic_dir / fname
+            pkg_dir = OUT_MODULES / pkg
+            if not pkg_dir.is_dir():
+                print("  ! 补录许可找不到包目录: %s" % pkg)
+                continue
+            if not src_lic.is_file():
+                print("  ! 补录许可文件缺失: %s" % fname)
+                continue
+            shutil.copy2(src_lic, pkg_dir / "LICENSE.txt")
+            patched_lic += 1
+    if patched_lic:
+        print("  + 补录许可文件: %d 个" % patched_lic)
 
     # 核心源码本身是 ESM（原本依赖工作区根目录的 package.json 声明 type:module），
     # 这里在核心根目录补一份等价声明。

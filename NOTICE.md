@@ -30,6 +30,52 @@ FnPlayer 是一个**聚合了多个开源项目**的播放器。本文件列出�
 | **requests** | https://github.com/psf/requests | Apache-2.0 | 仅上游内核 PoC 分支使用 |
 | **segno** | https://github.com/heuer/segno | BSD-3-Clause | 局域网访问二维码生成（可选依赖） |
 
+## 2.1 随发行包分发的 npm 运行时依赖
+
+弹幕核心（danmu_api）依赖一批 npm 包。**桌面便携版分发完整 `node_modules`**，
+**安卓版只分发静态扫描出的运行时依赖闭包**（`android/build_danmu_core.py`
+裁掉了 redis 家族与 `@electric-sql/pglite` 等可选依赖）。
+每个包目录内的 LICENSE 文件都随发行包分发。
+
+| 组件 | 上游 Git 仓库 | 许可证 |
+| --- | --- | --- |
+| @dan-uni/dan-any | https://github.com/ani-uni/dan-any | LGPL-3.0-or-later |
+| @bufbuild/protobuf | https://github.com/bufbuild/protobuf-es | Apache-2.0 AND BSD-3-Clause |
+| @nodable/entities | https://github.com/nodable/val-parsers | MIT |
+| bignumber.js | https://github.com/MikeMcl/bignumber.js | MIT |
+| brotli | https://github.com/devongovett/brotli.js | MIT |
+| chokidar | https://github.com/paulmillr/chokidar | MIT |
+| data-uri-to-buffer | https://github.com/TooTallNate/node-data-uri-to-buffer | MIT |
+| dotenv | https://github.com/motdotla/dotenv | BSD-3-Clause |
+| drizzle-orm | https://github.com/drizzle-team/drizzle-orm | Apache-2.0 |
+| esbuild（含 @esbuild/win32-x64） | https://github.com/evanw/esbuild | MIT |
+| fast-xml-parser | https://github.com/NaturalIntelligence/fast-xml-parser | MIT |
+| https-proxy-agent | https://github.com/TooTallNate/https-proxy-agent | MIT |
+| node-fetch | https://github.com/node-fetch/node-fetch | MIT |
+| opencc-js | https://github.com/BYVoid/OpenCC | Apache-2.0 |
+| pako | https://github.com/nodeca/pako | MIT |
+| redis / @redis/* | https://github.com/redis/node-redis | MIT |
+| zod | https://github.com/colinhacks/zod | MIT |
+| 其余包 | 见各包 `package.json` 的 `repository` 字段 | MIT / Apache-2.0 / BSD-3-Clause |
+
+> **关于「补录」的许可文件**
+>
+> 下列 npm 包**上游既没在发行包里附带许可文本文件，仓库根目录也没有 LICENSE**
+> （属于上游的发布遗漏）：`@bufbuild/protobuf`、`@nodable/entities`、`brotli`、
+> `data-uri-to-buffer`、`redis` 与 `@redis/*` 全家族、`drizzle-orm`、
+> `@esbuild/win32-x64`。
+>
+> 但它们的 `package.json` / npm registry 元数据**明确声明了许可证**
+> （MIT / Apache-2.0），而这些许可都要求「随副本附带许可声明」。
+> 因此 FnPlayer 按其声明的许可条款**补录**了许可全文，存放在
+> `android/danmu-core-src/licenses/`（包名 → 许可文件的映射见该目录的
+> `manifest.json`），构建时自动填入对应包目录；副本同时收录在
+> [`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/)。
+>
+> 每份补录文件末尾都附有说明（写明为何补录、版权归属来自何处），
+> **未对上游包内容作任何修改**。
+
+
 ## 3. 构建工具链（不随源码分发，仅构建时使用）
 
 | 组件 | 上游 | 许可证 |
@@ -48,6 +94,13 @@ FnPlayer 是一个**聚合了多个开源项目**的播放器。本文件列出�
 原因很直接：安卓端把 **danmu_api（AGPL-3.0）** 的源码直接编入安装包并随应用分发，
 按 AGPL-3.0 的传染性要求，组合作品必须同样以 AGPL-3.0 提供**完整对应源码**。
 本仓库即为该对应源码。
+
+其中 **danmu_api 的完整源码已随本仓库提供**，位于
+[`third_party/danmu_api/`](third_party/danmu_api/)（源 commit
+`4c865798ddf8972fc80a6cc850d896f459d01d78`，说明见该目录的
+`README.FnPlayer.md`），满足 AGPL-3.0 第 13 条「提供完整对应源码」的要求。
+安卓端 APK 内也随包附带了 danmu_api 的 AGPL-3.0 许可原文
+（`assets/danmu-core/LICENSE.danmu_api-AGPL-3.0.txt`）。
 
 同时：
 

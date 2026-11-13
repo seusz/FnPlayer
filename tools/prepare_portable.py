@@ -289,6 +289,19 @@ FnPlayer.exe 来停止服务。
 能否访问、内容是否合法由使用者自行判断和负责。FnPlayer 不预置任何
 第三方资源站或弹幕服务地址。
 
+【源码提供】
+本项目以 AGPL-3.0 发布，源码已公开：
+  https://github.com/seusz/FnPlayer
+- 弹幕核心 danmu_api 的完整源码就在本包 workspace/danmu/danmu_api/ 中，
+  与仓库 third_party/danmu_api/ 逐字节一致（含全部测试文件），
+  其 AGPL-3.0 许可原文见 workspace/danmu/LICENSE。
+- 随包分发的 npm 依赖，各自的 LICENSE 文件都在
+  workspace/danmu/node_modules/<包名>/ 下。
+- 第三方组件的上游仓库地址与许可证汇总见仓库内的 NOTICE.md，
+  许可原文副本见 THIRD_PARTY_LICENSES/。
+- 按 AGPL-3.0 第 13 条：若你修改了本项目并通过网络向他人提供服务，
+  必须同时向这些用户提供你的修改版源码。
+
 【合规】
 上游 fnmedia-ext (MIT)、hls.js (Apache-2.0)、弹弹play 兼容客户端、
 danmu_api (AGPL-3.0)、segno (BSD，许可证见 LICENSES/segno-LICENSE.txt)、
@@ -459,8 +472,12 @@ def prepare_workspace(src: Path, skip_npm: bool):
         s, t = src / name, d / name
         # 不做递归删除（环境安全策略会拦截批量删除）；直接覆盖同名文件即可，
         # patch 步骤是幂等的，重复组装不会产生副作用。
+        # AGPL-3.0 第 13 条要求随分发物提供「完整对应源码」，所以这里不排除
+        # 上游的 tests/ 目录 —— 便携包内的 danmu_api/ 要与仓库
+        # third_party/danmu_api/ 里的源码完全一致，缺一份测试都不算完整。
+        # 只排除 .git 与 node_modules（后者由 npm install 单独准备）。
         shutil.copytree(s, t, dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns("tests", "__tests__", "*.test.js"))
+                        ignore=shutil.ignore_patterns(".git", "node_modules"))
     (d / "config").mkdir(exist_ok=True)
     env_example = src / "config" / ".env.example"
     if env_example.is_file():

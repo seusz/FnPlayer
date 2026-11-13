@@ -53,6 +53,19 @@ def build():
           f"{len(list(OUT.rglob('*')))} 个文件)")
 
 
+def safe_unlink(path: Path):
+    """尽力删除一个文件；删不掉也不算失败。
+
+    构建期的服务日志可能仍被后台弹幕服务进程占用，且环境里的安全删除
+    通道（回收站）对工作区路径有时会直接失败。日志文件本来就不进分发包，
+    所以这里允许删除失败，只做提示。
+    """
+    try:
+        path.unlink()
+    except OSError as e:
+        print(f"  提示：未能删除 {path.name}（{e.__class__.__name__}），不影响打包")
+
+
 def assemble_portable():
     """把便携附加资源装进 dist/FnPlayer，形成解压即用的完整目录。"""
     step("组装便携版（config / runtime / workspace / data）")
@@ -74,7 +87,7 @@ def assemble_portable():
     logs = OUT / "workspace" / "danmu" / "logs"
     logs.mkdir(exist_ok=True)
     for f in logs.glob("*.log"):
-        f.unlink()
+        safe_unlink(f)
     (logs / "README.txt").write_text(
         "弹幕服务运行日志会写在这里（service.log）。\n", encoding="utf-8")
     size = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file())
@@ -204,14 +217,24 @@ def make_zip():
     # 验收过程会产生服务日志，不随包分发
     logs = OUT / "workspace" / "danmu" / "logs"
     for f in logs.glob("*.log"):
-        f.unlink()
+        safe_unlink(f)
     target = DIST / f"FnPlayer-{VERSION}-Windows-x64.zip"
     if target.exists():
-        target.unlink()
+        safe_unlink(target)
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         for p in OUT.rglob("*"):
-            if p.is_file() and p.suffix != ".log":
-                z.write(p, str(Path("FnPlayer") / p.relative_to(OUT)))
+            if not p.is_file() or p.suffix == ".log":
+                continue
+            rel = p.relative_to(OUT)
+            # data/ 是运行期状态（播放记录、Edge 用户配置、缓存），不属于分发物；
+            # 验收与本机试跑都会往里写东西，必须排除，否则包里会夹带
+            # 几千个浏览器 profile 文件。
+            if rel.parts and rel.parts[0] == "data":
+                continue
+            # 弹幕服务的本地缓存（.cache/）同理：是运行期产物，不是源码。
+            if ".cache" in rel.parts:
+                continue
+            z.write(p, str(Path("FnPlayer") / rel))
     print(f"压缩包: {target} ({target.stat().st_size / 1024 / 1024:.1f} MB)")
 
 

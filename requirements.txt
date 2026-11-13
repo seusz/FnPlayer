@@ -1,0 +1,15 @@
+# FnPlayer 桌面版（Windows）Python 依赖
+# 安装：pip install -r requirements.txt
+#
+# 安卓端不需要这些：它用 Java 实现本机服务，弹幕核心由内置的 Node 运行时执行。
+
+fastapi>=0.110
+uvicorn>=0.27
+httpx>=0.26
+starlette>=0.36
+
+# 仅局域网访问二维码使用（可选，缺失时自动降级为纯文本地址）
+segno>=1.6
+
+# 仅上游 fnmedia-ext 内核的 PoC 分支使用
+requests>=2.31

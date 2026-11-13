@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="fn-token" content="__FN_TOKEN__">
+<title>FnPlayer · 在线媒体播放器</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand" id="brandHome">
+    <span class="brand-mark">▶</span>
+    <span class="brand-name">Fn<span>Player</span></span>
+    <span class="brand-ver">v__FN_VERSION__</span>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" data-view="discover">发现</button>
+    <button class="nav-btn" data-view="history">继续观看</button>
+    <button class="nav-btn" data-view="settings">设置</button>
+  </nav>
+  <div class="search-wrap">
+    <input id="searchInput" type="search" placeholder="搜索片名，回车开始…" autocomplete="off" spellcheck="false">
+    <button id="searchBtn" class="icon-btn" title="搜索">🔍</button>
+  </div>
+  <button id="themeBtn" class="icon-btn" title="切换主题">◐</button>
+</header>
+
+<main id="main">
+  <!-- 发现 / 搜索结果 -->
+  <section id="view-discover" class="view active">
+    <div class="view-head">
+      <h1 id="discoverTitle">发现</h1>
+      <span id="discoverMeta" class="muted"></span>
+      <button id="loadMore" class="ghost-btn" hidden>加载更多</button>
+    </div>
+    <div id="emptyState" class="empty-state" hidden>
+      <div class="empty-icon">◎</div>
+      <h2>还没有配置任何接口</h2>
+      <p>FnPlayer 不预置任何资源站。请在设置中添加你拥有合法授权或自建的苹果 CMS V10 JSON 接口。</p>
+      <button class="primary-btn" id="goSettings">前往设置</button>
+    </div>
+    <div id="posterGrid" class="poster-grid"></div>
+    <div id="loadingState" class="loading" hidden><span class="spinner"></span> 正在聚合搜索…</div>
+  </section>
+
+  <!-- 继续观看 -->
+  <section id="view-history" class="view">
+    <div class="view-head"><h1>继续观看</h1><span class="muted">播放进度保存在本机</span></div>
+    <div id="historyList" class="history-list"></div>
+  </section>
+
+  <!-- 设置 -->
+  <section id="view-settings" class="view">
+    <div class="view-head">
+      <h1>设置</h1>
+      <button id="exitApp" class="ghost-btn">退出应用</button>
+    </div>
+    <div class="settings-cols">
+      <div class="panel">
+        <h2>接口管理</h2>
+        <p class="hint">支持标准苹果 CMS V10 接口（<code>?ac=detail&amp;wd=关键词</code> 返回 JSON）。便携版也可直接编辑 <code>config/config.json</code> 里的 <code>sources</code>，保存即生效。</p>
+        <div class="form-row">
+          <input id="srcName" placeholder="名称（可选）">
+          <input id="srcApi" placeholder="https://your-domain/api.php/provide/vod/at/json">
+          <button id="addSrcBtn" class="primary-btn">添加</button>
+        </div>
+        <details class="bulk-box">
+          <summary>批量导入</summary>
+          <p class="hint">每行一条，格式 <code>名称,地址</code> 或直接贴地址；也支持 JSON 数组、<code>#</code> 注释行。</p>
+          <textarea id="bulkText" rows="6" spellcheck="false"
+            placeholder="示例：&#10;我的媒体库,https://my-nas.example/api.php/provide/vod/at/json&#10;https://another.example/api.php/provide/vod/at/json"></textarea>
+          <div class="btn-row">
+            <button id="bulkBtn" class="primary-btn">导入</button>
+            <span id="bulkMsg" class="muted"></span>
+          </div>
+        </details>
+        <div class="table-wrap"><table id="srcTable"><thead><tr>
+          <th>名称</th><th>接口地址</th><th>启用</th><th>状态</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="btn-row">
+          <button id="testAllBtn" class="ghost-btn">全部测速</button>
+          <span id="testMsg" class="muted"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>播放</h2>
+        <label class="switch-row"><span>自动续播<small>从上次位置继续</small></span><input type="checkbox" id="setResume" class="switch"></label>
+        <label class="switch-row"><span>自动下一集<small>播完自动切换</small></span><input type="checkbox" id="setNext" class="switch"></label>
+        <label class="switch-row"><span>失败自动换线<small>播放出错时尝试其它线路</small></span><input type="checkbox" id="setAutoLine" class="switch"></label>
+        <div class="form-row"><label>搜索超时</label><input id="setTimeout" type="number" min="3" max="30" step="1"><span class="muted">秒</span></div>
+        <div class="form-row"><label>每页结果</label><input id="setLimit" type="number" min="6" max="60" step="1"><span class="muted">条</span></div>
+        <div class="form-row"><label>外部播放器</label><input id="setExternal" placeholder="mpv.exe / vlc.exe 完整路径（可选）"></div>
+        <div class="form-row"><label>取源代理</label><input id="setProxy" placeholder="http://host:port（可选，留空直连）"></div>
+        <button id="saveSettings" class="primary-btn">保存设置</button>
+        <span id="settingsMsg" class="muted"></span>
+      </div>
+
+      <div class="panel">
+        <h2>过滤词</h2>
+        <p class="hint">标题或备注命中任一关键词的结果会被过滤，逗号或换行分隔。</p>
+        <textarea id="junkWords" rows="5" spellcheck="false"></textarea>
+        <div class="btn-row">
+          <button id="saveJunk" class="ghost-btn">保存</button>
+          <button id="resetJunk" class="ghost-btn">恢复默认</button>
+        </div>
+        <h2 style="margin-top:28px">关于</h2>
+        <p class="hint">
+          FnPlayer 是基于开源项目 <b>fnmedia-ext</b>（MIT）的 Windows 桌面播放器整合版，
+          复用其苹果 CMS 适配与多线路解析内核，内置 hls.js 播放引擎。
+        </p>
+        <p class="disclaimer">
+          本应用是通用的本地媒体客户端，<b>不内置、不提供、不存储、不推荐任何资源站地址或影视内容</b>。
+          所有接口与内容由使用者自行配置、自行核实合法性与版权状态，仅用于访问自有或已获授权的内容。
+          请勿用于访问或传播侵权内容。
+        </p>
+        <p class="hint">配置文件：<code id="dataDirHint">%APPDATA%\FnPlayer\config.json</code></p>
+      </div>
+    </div>
+
+    <div class="panel danmu-settings-panel">
+      <h2>弹幕</h2>
+      <div class="svc-box">
+        <div class="svc-head">
+          <div>
+            <strong>本地弹幕服务</strong>
+            <p class="hint">
+              便携版自带独立工作区 <code>workspace/danmu</code> 与便携 Node 运行时，无需另外安装。
+              打开开关即拉起本地服务（只监听 127.0.0.1）并自动填好服务地址，关闭即停止。
+            </p>
+          </div>
+          <label class="switch-row compact"><span>启用<small>随播放器启动</small></span><input type="checkbox" id="setDanmuService" class="switch"></label>
+        </div>
+        <div class="form-row">
+          <label>端口</label><input id="setDanmuPort" type="number" min="1" max="65535" step="1">
+          <label>TOKEN</label><input id="setDanmuToken" spellcheck="false">
+          <button id="svcRestartBtn" class="ghost-btn">重启服务</button>
+          <span id="svcBadge" class="svc-badge">检测中…</span>
+        </div>
+        <div class="svc-line"><span id="svcStatusText">正在读取服务状态…</span></div>
+        <details class="svc-log"><summary>查看服务日志</summary><pre id="svcLog"></pre></details>
+      </div>
+      <p class="hint">
+        也可以对接<b>自行部署</b>的弹幕服务（<code>danmu_api</code> / 弹弹play <code>/api/v2</code> 兼容接口，AGPL-3.0）。
+        本应用不预置任何第三方弹幕地址；关闭上面的本地服务后，可在下方填写其它地址。
+      </p>
+      <div class="form-row">
+        <label>服务地址</label>
+        <input id="setDanmuApi" placeholder="http://127.0.0.1:9321/87654321" spellcheck="false">
+        <button id="probeDanmuBtn" class="ghost-btn">测试连接</button>
+        <span id="danmuProbeMsg" class="muted"></span>
+      </div>
+      <div class="form-row">
+        <label class="switch-row compact"><span>启用弹幕<small>播放页显示弹幕层</small></span><input type="checkbox" id="setDanmuOn" class="switch"></label>
+        <label class="switch-row compact"><span>自动匹配<small>开播时自动找本集弹幕</small></span><input type="checkbox" id="setDanmuAuto" class="switch"></label>
+      </div>
+      <p class="hint">播放页控制条的「弹幕」面板可手动搜索选集、调节显示效果、本地发送弹幕（不会上传到任何服务）。</p>
+    </div>
+
+    <div class="panel lan-settings-panel">
+      <h2>局域网访问 <span id="lanBadge" class="svc-badge">检测中…</span></h2>
+      <p class="hint">
+        前端本来就是浏览器页面。默认服务只监听 <code>127.0.0.1</code>；打开开关后改为监听所有网卡，
+        同一 Wi-Fi 下的手机 / 平板 / 电视用浏览器就能打开播放器。视频与弹幕流量仍由本机代理转发，
+        <b>请只在自己信任的局域网内开启</b>。
+      </p>
+      <div class="svc-box">
+        <div class="svc-head">
+          <div>
+            <strong>允许局域网设备访问</strong>
+            <p class="hint">首次开放时 Windows 防火墙可能弹出提示，请勾选「专用网络」并允许。
+              切换开关只重绑服务端口，不会关闭窗口，但会短暂中断当前播放。</p>
+          </div>
+          <label class="switch-row compact"><span>启用<small>需应用后生效</small></span><input type="checkbox" id="setLanEnabled" class="switch"></label>
+        </div>
+        <div class="form-row">
+          <label>端口</label><input id="setLanPort" type="number" min="1" max="65535" step="1">
+          <label>访问码</label><input id="setLanKey" spellcheck="false" placeholder="4-32 位字母/数字，留空则不鉴权">
+          <button id="lanGenKeyBtn" class="ghost-btn">生成</button>
+          <button id="lanApplyBtn" class="primary-btn">应用并重启</button>
+        </div>
+        <p class="hint">建议设置访问码：扫码 / 链接会带上访问码，浏览器记住后无需重复输入；留空时同网段任何设备都能直接打开。</p>
+        <div class="svc-line"><span id="lanStatusText">正在读取状态…</span></div>
+      </div>
+      <div id="lanAccessBox" class="lan-access" hidden>
+        <div class="lan-urls">
+          <div class="lan-url-col">
+            <strong>访问地址</strong>
+            <p class="hint">在手机浏览器输入，或直接扫码（二维码已包含访问码）。</p>
+            <div id="lanUrls"></div>
+          </div>
+          <div class="lan-qr-box">
+            <img id="lanQr" alt="局域网访问二维码">
+            <span class="muted" id="lanQrTip">第一个网卡地址</span>
+          </div>
+        </div>
+        <p class="hint">
+          管理功能（接口、设置、弹幕服务开关、退出应用）仅允许在主机上操作；局域网设备可搜索、
+          播放、看弹幕、记录进度。手机观看期间请保持本机播放器窗口开着。
+        </p>
+      </div>
+      <p id="lanRemoteHint" class="disclaimer" hidden>
+        当前页面由局域网设备打开：管理操作已在服务端禁用，请在 FnPlayer 主机上修改设置。
+      </p>
+    </div>
+  </section>
+
+  <!-- 详情 -->
+  <section id="view-detail" class="view">
+    <button class="back-btn" id="detailBack">← 返回</button>
+    <div id="detailBody"></div>
+  </section>
+
+  <!-- 播放器 -->
+  <section id="view-player" class="view player-view">
+    <div class="player-shell">
+      <div class="video-wrap" id="videoWrap">
+        <video id="video" playsinline preload="metadata"></video>
+        <canvas id="danmuCanvas" class="danmu-canvas"></canvas>
+        <div id="playerOverlay" class="player-overlay"><span class="spinner big"></span><span id="overlayText">正在解析播放地址…</span></div>
+        <div id="resumeToast" class="resume-toast" hidden></div>
+      </div>
+      <div class="controls" id="controls">
+        <div class="progress-row">
+          <div class="progress" id="progress"><div class="buffered" id="buffered"></div><div class="played" id="played"></div><div class="thumb" id="thumb"></div></div>
+        </div>
+        <div class="ctrl-row">
+          <button id="btnPlay" class="ctrl-btn" title="播放/暂停 (空格)">▶</button>
+          <button id="btnPrev" class="ctrl-btn" title="上一集">⏮</button>
+          <button id="btnNext" class="ctrl-btn" title="下一集">⏭</button>
+          <span class="time" id="timeLabel">00:00 / 00:00</span>
+          <div class="spacer"></div>
+          <button id="btnMute" class="ctrl-btn" title="静音 (M)">🔊</button>
+          <input id="volume" type="range" min="0" max="1" step="0.05" value="1" class="volume">
+          <select id="rate" class="mini-select" title="倍速">
+            <option value="0.5">0.5x</option><option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option><option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option><option value="2">2.0x</option>
+          </select>
+          <button id="btnPip" class="ctrl-btn" title="画中画">⧉</button>
+          <button id="btnDanmu" class="ctrl-btn danmu-switch" title="弹幕显示/隐藏 (D)">弹</button>
+          <button id="btnDanmuPanel" class="ctrl-btn wide" title="弹幕设置 / 搜索 / 发送">弹幕</button>
+          <button id="btnExternal" class="ctrl-btn" title="用外部播放器打开">↗</button>
+          <button id="btnFull" class="ctrl-btn" title="全屏 (F)">⛶</button>
+        </div>
+      </div>
+
+      <div id="danmuPanel" class="danmu-panel" hidden>
+        <div class="dp-head">
+          <strong>弹幕</strong>
+          <button id="dpClose" class="dp-x" title="关闭">×</button>
+        </div>
+        <div id="dpStatus" class="dp-status">未配置弹幕服务</div>
+        <div class="dp-row">
+          <input id="dpKeyword" placeholder="按剧名搜索弹幕">
+          <button id="dpSearch" class="primary-btn">搜索</button>
+        </div>
+        <div id="dpAnimes" class="dp-list"></div>
+        <div id="dpEpisodes" class="dp-list" hidden></div>
+        <div class="dp-divider"><span>显示设置</span></div>
+        <label class="dp-slider"><span>不透明度</span><input id="dpOpacity" type="range" min="0.2" max="1" step="0.05"><b id="dpOpacityVal"></b></label>
+        <label class="dp-slider"><span>字号</span><input id="dpFont" type="range" min="16" max="40" step="1"><b id="dpFontVal"></b></label>
+        <label class="dp-slider"><span>显示区域</span><input id="dpArea" type="range" min="0.25" max="1" step="0.05"><b id="dpAreaVal"></b></label>
+        <label class="dp-slider"><span>滚动速度</span><input id="dpSpeed" type="range" min="4" max="16" step="0.5"><b id="dpSpeedVal"></b></label>
+        <label class="dp-slider"><span>时间偏移</span><input id="dpOffset" type="range" min="-30" max="30" step="0.5"><b id="dpOffsetVal"></b></label>
+        <div class="dp-divider"><span>本地发送</span></div>
+        <div class="dp-row">
+          <input id="dpSendText" placeholder="发条弹幕（仅本机显示）" maxlength="100">
+          <button id="dpSend" class="primary-btn">发送</button>
+        </div>
+        <div class="dp-foot">
+          <button id="dpReload" class="ghost-btn">重新匹配本集</button>
+          <button id="dpClear" class="ghost-btn">清空弹幕</button>
+        </div>
+      </div>
+    </div>
+    <aside class="player-side">
+      <div class="side-head">
+        <button class="back-btn" id="playerBack">← 返回详情</button>
+        <h2 id="playerTitle"></h2>
+        <span id="playerEpisode" class="muted"></span>
+      </div>
+      <label class="field-label">播放线路</label>
+      <select id="lineSelect" class="select"></select>
+      <div class="side-row"><label class="field-label">选集</label><span id="epCount" class="muted"></span></div>
+      <div id="episodeGrid" class="episode-grid compact"></div>
+      <div id="playerError" class="player-error" hidden></div>
+    </aside>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/static/hls.min.js"></script>
+<script src="/static/danmu.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

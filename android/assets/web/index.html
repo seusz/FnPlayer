@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1016">
+<meta name="format-detection" content="telephone=no">
+<title>FnPlayer</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar" id="topbar">
+    <div class="brand"><span class="logo">Fn</span><span class="brand-text">FnPlayer</span></div>
+    <div class="top-right"><span class="badge" id="lanBadge">仅本机</span></div>
+  </header>
+
+  <main class="views">
+    <!-- 首页 -->
+    <section class="view active" id="view-home">
+      <div class="searchbar">
+        <input id="searchInput" type="search" placeholder="搜索影片名称" autocomplete="off" enterkeyhint="search">
+        <button class="btn primary" id="btnSearch">搜索</button>
+      </div>
+      <div class="status-line" id="sourceInfo">正在读取配置…</div>
+      <div id="homeContent"></div>
+    </section>
+
+    <!-- 搜索结果：独立导航层级，返回时保留关键词与结果 -->
+    <section class="view" id="view-search">
+      <div class="detail-head">
+        <button class="back-btn" data-act="back">返回</button>
+        <span class="detail-title">搜索结果</span>
+      </div>
+      <div class="searchbar">
+        <input id="searchInput2" type="search" placeholder="搜索影片名称" autocomplete="off" enterkeyhint="search">
+        <button class="btn primary" id="btnSearch2">搜索</button>
+      </div>
+      <div class="status-line" id="searchInfo">输入片名开始搜索</div>
+      <div id="searchBody"></div>
+    </section>
+
+    <!-- 详情 -->
+    <section class="view" id="view-detail">
+      <div class="detail-head">
+        <button class="back-btn" data-act="back">返回</button>
+        <span class="detail-title" id="detailTitle">影片详情</span>
+        <button class="fav-btn" id="btnFav" data-act="toggle-fav">☆ 收藏</button>
+      </div>
+      <div id="detailBody"></div>
+    </section>
+
+    <!-- 播放器 -->
+    <section class="view player-view" id="view-player">
+      <div class="player-stage" id="playerStage">
+        <video id="video" playsinline webkit-playsinline crossorigin="anonymous"></video>
+        <canvas id="danmuCanvas"></canvas>
+        <div class="player-loading" id="playerLoading">正在解析播放地址…</div>
+        <div class="player-top">
+          <button class="pbtn" data-act="back">返回</button>
+          <div class="player-title" id="playerTitle"></div>
+        </div>
+        <div class="player-controls" id="playerControls">
+          <div class="seek-row">
+            <span class="time" id="timeNow">00:00</span>
+            <input type="range" id="seekBar" min="0" max="100" value="0" step="0.1">
+            <span class="time" id="timeTotal">00:00</span>
+          </div>
+          <div class="ctrl-row">
+            <button class="pbtn" id="btnPlayPause">播放</button>
+            <button class="pbtn" id="btnRate">倍速 1.0</button>
+            <button class="pbtn" data-act="episodes">选集</button>
+            <button class="pbtn" data-act="lines">线路</button>
+            <button class="pbtn" id="btnDanmu">弹幕</button>
+            <button class="pbtn" id="btnFullscreen">全屏</button>
+          </div>
+        </div>
+      </div>
+      <div class="player-foot" id="playerFoot"></div>
+
+      <!-- 弹幕面板：服务已在后台静默就绪，这里只做显示控制/手动匹配/参数 -->
+      <div class="dm-mask" id="dmMask"></div>
+      <div class="dm-panel" id="dmPanel">
+        <div class="dm-head"><b>弹幕</b><button class="btn ghost small" id="dmClose">关闭</button></div>
+        <div class="dm-status" id="dmStatus">弹幕服务已在后台就绪</div>
+        <div class="hint" id="dmCoverageNote"></div>
+        <div class="dm-row">
+          <button class="btn" id="dmToggle">关闭弹幕</button>
+          <button class="btn ghost" id="dmReload">重新匹配</button>
+          <button class="btn ghost" id="dmClear">清屏</button>
+        </div>
+        <div class="dm-search">
+          <input id="dmKeyword" type="search" placeholder="手动搜索片名 / 番剧名" autocomplete="off">
+          <button class="btn primary" id="dmSearchBtn">搜索</button>
+        </div>
+        <div class="dm-list" id="dmAnimes" hidden></div>
+        <div class="dm-list" id="dmEpisodes" hidden></div>
+        <div class="dm-sliders">
+          <label>透明度 <input type="range" id="dmOpacity" min="0.2" max="1" step="0.05"><span id="dmOpacityVal">85%</span></label>
+          <label>字号 <input type="range" id="dmFont" min="12" max="36" step="1"><span id="dmFontVal">20px</span></label>
+          <label>显示区域 <input type="range" id="dmArea" min="0.25" max="1" step="0.05"><span id="dmAreaVal">75%</span></label>
+          <label>滚动速度 <input type="range" id="dmSpeed" min="3" max="16" step="0.5"><span id="dmSpeedVal">8s</span></label>
+          <label>时间偏移 <input type="range" id="dmOffset" min="-10" max="10" step="0.5"><span id="dmOffsetVal">0s</span></label>
+        </div>
+        <div class="dm-send">
+          <input id="dmText" type="text" placeholder="发一条本地弹幕" maxlength="200">
+          <button class="btn primary" id="dmSendBtn">发送</button>
+        </div>
+        <p class="hint">本地发送的弹幕只在本机显示，不会上传到任何服务。内置镜像只索引弹弹play 番剧/动画库，国产剧与电影通常匹配不到，需在设置里配置完整 danmu_api 服务（见随包《弹幕服务部署指引》）。弹幕内容能否访问、是否合适由使用者自行判断。</p>
+      </div>
+    </section>
+
+    <!-- 历史 -->
+    <section class="view" id="view-history">
+      <div class="section-head"><h2>播放记录</h2><button class="btn ghost small" id="btnClearHistory">清空</button></div>
+      <div id="historyBody"></div>
+    </section>
+
+    <!-- 我的收藏 -->
+    <section class="view" id="view-favorites">
+      <div class="section-head"><h2>我的收藏</h2><button class="btn ghost small" id="btnClearFavorites">清空</button></div>
+      <p class="hint">在影片详情页点「收藏」即可加入；收藏的影片详情会保存在本机，退出应用后仍可直接打开。</p>
+      <div id="favoritesBody"></div>
+    </section>
+
+    <!-- 设置 -->
+    <section class="view" id="view-settings">
+      <div class="section-head"><h2>设置</h2></div>
+
+      <div class="panel">
+        <div class="panel-title">播放源</div>
+        <p class="hint">填写你自己拥有合法授权或自建的苹果CMS V10 JSON 接口。本应用不预置任何资源站，配置保存在手机应用私有目录。</p>
+        <div id="sourceList"></div>
+        <div class="add-row">
+          <input id="newName" type="text" placeholder="名称（可留空）">
+          <input id="newApi" type="url" placeholder="https://…/api.php/provide/vod/at/json">
+          <button class="btn primary" id="btnAddSource">添加</button>
+        </div>
+        <div class="sub-title">批量导入</div>
+        <textarea id="bulkText" rows="4" placeholder="每行一个：名称 接口地址&#10;也支持直接粘贴 JSON 数组"></textarea>
+        <div class="btn-row">
+          <button class="btn" id="btnBulk">导入播放源</button>
+          <button class="btn ghost" id="btnTestApi">测试第一个地址</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">播放</div>
+        <label class="form-row"><span>自动续播</span><input type="checkbox" class="switch" id="setResume"></label>
+        <label class="form-row"><span>搜索超时（秒）</span><input type="number" id="setTimeout" min="3" max="30" step="1"></label>
+        <button class="btn primary" id="btnSaveSettings">保存设置</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">弹幕</div>
+        <p class="hint">本版本内置了完整的弹幕核心（Node 运行时 + danmu_api，随应用在后台启动，只监听本机回环地址），聚合豆瓣/360/腾讯/优酷/爱奇艺/咪咕/B站等平台，国产剧与电影也能匹配到弹幕。核心启动失败时会自动回退到内置镜像。桌面版 127.0.0.1 地址在手机上会被自动忽略。</p>
+        <div class="kv"><span>服务状态</span><b id="dmSvcStatus">检测中…</b></div>
+        <div class="hint" id="setDanmuNote"></div>
+        <label class="form-row"><span>显示弹幕</span><input type="checkbox" class="switch" id="setDanmuEnabled"></label>
+        <label class="form-row"><span>播放时自动匹配</span><input type="checkbox" class="switch" id="setDanmuAuto"></label>
+        <div class="sub-title">自定义弹幕服务（可选）</div>
+        <input id="setDanmuApi" class="wide-input" type="url" placeholder="留空 = 使用内置弹幕核心；或 https://你的服务/TOKEN">
+        <div class="btn-row">
+          <button class="btn" id="btnDanmuSave">保存弹幕设置</button>
+          <button class="btn ghost" id="btnDanmuProbe">测试地址</button>
+          <button class="btn ghost" id="btnDanmuRecheck">重新检测</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">配置迁移</div>
+        <p class="hint">可把电脑版 config/config.json 的内容粘贴到此处直接导入；下方按钮可导出当前配置以便备份。</p>
+        <textarea id="configText" rows="4" placeholder="粘贴完整 config.json 内容"></textarea>
+        <div class="btn-row">
+          <button class="btn" id="btnImportConfig">导入完整配置</button>
+          <button class="btn ghost" id="btnExportConfig">导出当前配置</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">关于</div>
+        <div class="kv"><span>版本</span><b>1.2.0 Android</b></div>
+        <div class="kv"><span>运行方式</span><b>仅本机 127.0.0.1</b></div>
+        <div class="kv"><span>配置文件</span><b id="configPath">—</b></div>
+        <p class="hint">本版本不提供局域网服务，也不会对外开放端口。视频、海报与弹幕的网络请求均由应用内本地服务转发，播放端不直连源站。弹幕服务在应用启动时于后台静默就绪。</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <button class="tab active" data-tab="home"><i class="tab-ico ico-home"></i><span>首页</span></button>
+    <button class="tab" data-tab="favorites"><i class="tab-ico ico-star"></i><span>收藏</span></button>
+    <button class="tab" data-tab="history"><i class="tab-ico ico-history"></i><span>历史</span></button>
+    <button class="tab" data-tab="settings"><i class="tab-ico ico-settings"></i><span>设置</span></button>
+  </nav>
+
+  <div class="sheet-mask" id="sheetMask"></div>
+  <div class="sheet" id="sheet"><div class="sheet-head"><b id="sheetTitle">选择</b><button class="btn ghost small" id="sheetClose">关闭</button></div><div id="sheetBody"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>window.__FN_TOKEN__ = "__FN_TOKEN__";</script>
+<script src="/static/hls.min.js"></script>
+<script src="/static/danmu.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

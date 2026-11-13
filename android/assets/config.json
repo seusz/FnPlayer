@@ -1,0 +1,17 @@
+{
+  "_说明": "FnPlayer Android 出厂配置。请在应用「设置 → 播放源」中添加你拥有合法授权或自建的苹果CMS V10 JSON 接口；本应用不预置任何资源站。",
+  "_保存位置": "实际生效的配置在应用私有目录 config.json，设置页修改后立即保存，卸载应用会清除。可通过「配置迁移」导出备份。",
+  "_弹幕说明": "弹幕服务随应用启动在后台静默就绪，无需手动开关。danmu_api 留空即使用内置的 danmu_api 项目同款上游镜像；也可填你自己部署的 danmu_api /api/v2 兼容地址（桌面版 127.0.0.1 地址在手机上会自动忽略）。",
+  "sources": [],
+  "auto_resume": true,
+  "search_timeout": 9,
+  "danmu_enabled": true,
+  "danmu_auto": true,
+  "danmu_api": "",
+  "danmu_opacity": 0.85,
+  "danmu_font_size": 20,
+  "danmu_area": 0.75,
+  "danmu_speed": 8.0,
+  "danmu_offset": 0.0,
+  "danmu_bold": false
+}

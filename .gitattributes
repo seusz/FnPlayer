@@ -1,0 +1,15 @@
+# 仓库内统一用 LF（Windows 开发 + 跨平台脚本最省心）
+* text=auto eol=lf
+
+# Windows 专用的批处理脚本保持 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制资源不做换行转换
+*.png binary
+*.jpg binary
+*.ico binary
+*.so binary
+*.apk binary
+*.zip binary

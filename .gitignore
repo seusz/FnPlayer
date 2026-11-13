@@ -1,0 +1,49 @@
+# ---- 构建产物 ----
+# build/ 里既有源码（构建脚本），也有 1.1 GB 的工具链（_toolchain/_work/_archive），
+# 所以只忽略子目录，保留构建脚本本身。
+build/*
+!build/build.py
+!build/FnPlayer.spec
+!build/make_icon.py
+dist/
+!dist/.gitkeep
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---- Android 构建中间物 ----
+android/build/
+android/dist/
+android/__pycache__/
+*.idsig
+*.keystore
+!android/*.keystore.example
+
+# ---- Android 端内嵌的第三方运行时（体积大，用脚本获取）----
+# 213 MB 的 Node 运行时二进制，见 tools/fetch_sources.py
+android/lib/
+# 31 MB 的弹幕核心依赖闭包，由 android/build_danmu_core.py 从上游源码生成
+android/assets/danmu-core/
+
+# ---- 便携版外部资源（体积大，用 tools/prepare_portable.py 组装）----
+portable/runtime/
+portable/workspace/
+portable/data/
+portable/LICENSES/
+
+# ---- 日志与临时文件 ----
+*.log
+logs/
+.cache/
+*.tmp
+.DS_Store
+Thumbs.db
+
+# ---- 编辑器 ----
+.idea/
+.vscode/
+*.swp
